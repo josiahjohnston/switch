@@ -49,7 +49,7 @@ def summary_values(m):
     # scenario name and looping variables
     values.extend([
         str(m.options.scenario_name),
-        m.demand_response_max_share if hasattr(m, 'demand_response_max_share') else 0.0,
+        getattr(m.options, 'demand_response_share', 0.0)
     ])
     
     # total cost (all periods)

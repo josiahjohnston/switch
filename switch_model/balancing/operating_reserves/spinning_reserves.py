@@ -121,8 +121,8 @@ def define_arguments(argparser):
         choices = ["Hawaii", "3+5"],
         help=("Choose rules for spinning reserves requirements as a function "
               "of variable renewable power and load. Hawaii uses rules "
-              "bootstrapped from the GE RPS study, and '3+5' requires 3% of "
-              "load and 5% of variable renewable output, based on the heuristic "
+              "bootstrapped from the GE RPS study, and '3+5' requires 3%% of "
+              "load and 5%% of variable renewable output, based on the heuristic "
               "described in the 2010 Western Wind and Solar Integration Study.")
     )
     
@@ -278,9 +278,9 @@ def hawaii_spinning_reserve_requirements(m):
              "generators, as fraction of potential output.")
     )
     def var_gen_cap_reserve_limit_default(m, g):
-        if m.gen_energy_source[g] == 'Solar':
+        if m.gen_energy_source[g] == 'SUN':
             return 0.21288916
-        elif m.gen_energy_source[g] == 'Wind':
+        elif m.gen_energy_source[g] == 'WND':
             return 0.21624407
         else:
             raise RuntimeError()
@@ -307,7 +307,7 @@ def hawaii_spinning_reserve_requirements(m):
         if 'WithdrawFromCentralGrid' in dir(m):
             load = m.WithdrawFromCentralGrid
         else:
-            load = m.lz_demand_mw
+            load = m.zone_demand_mw
         return 0.10 * sum(load[z, t] for z in m.LOAD_ZONES if b == m.zone_balancing_area[z])
     m.HawaiiLoadDownSpinningReserveRequirement = Expression(
         m.BALANCING_AREA_TIMEPOINTS,
@@ -331,7 +331,7 @@ def nrel_3_5_spinning_reserve_requirements(m):
         if 'WithdrawFromCentralGrid' in dir(m):
             load = m.WithdrawFromCentralGrid
         else:
-            load = m.lz_demand_mw
+            load = m.zone_demand_mw
         return (0.03 * sum(load[z, t] for z in m.LOAD_ZONES
                            if b == m.zone_balancing_area[z])
               + 0.05 * sum(m.DispatchGen[g, t] for g in m.VARIABLE_GENS

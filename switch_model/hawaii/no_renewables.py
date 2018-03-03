@@ -16,7 +16,7 @@ def define_components(m):
     renewable_energy_sources = ['WND', 'SUN', 'Biocrude', 'Biodiesel', 'MLG']
     
     def No_Renewables_rule(m, g, bld_yr):
-        if m.g_energy_source[m.gen_tech[g]] in renewable_energy_sources:
+        if m.gen_energy_source[g] in renewable_energy_sources:
             return m.BuildGen[g, bld_yr] == 0
         else:
             return Constraint.Skip

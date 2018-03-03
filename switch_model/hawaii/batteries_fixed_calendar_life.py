@@ -127,7 +127,7 @@ def define_components(m):
         m.BatterySpinningReserveDown = Expression(
             m.BALANCING_AREA_TIMEPOINTS, 
             rule=lambda m, b, t: \
-                sum(m.BatterySlackDown[g, t] 
+                sum(m.BatterySlackDown[z, t] 
                     for z in m.ZONES_IN_BALANCING_AREA[b])
         )
         m.Spinning_Reserve_Down_Provisions.append('BatterySpinningReserveDown')
