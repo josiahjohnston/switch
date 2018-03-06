@@ -12,6 +12,7 @@ installed capacity.
 import os, collections
 from pyomo.environ import *
 from switch_model.reporting import write_table
+from switch_model.utilities import approx_equal
 import pandas as pd
 try:
     from ggplot import *
@@ -355,29 +356,47 @@ def post_solve(instance, outdir):
         )
     )
 
-
+    # Multifuel generators complicate matters and require disaggregating
+    # dispatch by energy source for reporting. 
+    gen_energy_timepoints = set()
+    dispatch_ge = dict()
+    emissions_ge = dict()
+    for g, t in instance.GEN_TPS:
+        if g in instance.MULTIFUEL_GENS:
+            total_fuel = sum(value(instance.GenFuelUseRate[g,t,f])
+                             for f in instance.FUELS_FOR_GEN[g])
+            for f in instance.FUELS_FOR_GEN[g]:
+                gen_energy_timepoints.add((g,t,f))
+                if total_fuel == 0:
+                    assert approx_equal(value(instance.DispatchGen[g, t]), 0)
+                    dispatch_ge[g,t,f] = 0
+                else:
+                    fuel_fraction = 1.0 * value(instance.GenFuelUseRate[g,t,f]) / total_fuel
+                    dispatch_ge[g,t,f] = value(instance.DispatchGen[g, t]) * fuel_fraction
+        else:
+            e = instance.gen_energy_source[g]
+            gen_energy_timepoints.add((g,t,e))
+            dispatch_ge[g,t,e] = value(instance.DispatchGen[g, t])
+    i = instance
     dispatch_normalized_dat = [{
         "generation_project": g,
-        "gen_dbid": instance.gen_dbid[g],
-        "gen_tech": instance.gen_tech[g],
-        "gen_load_zone": instance.gen_load_zone[g],
-        "gen_energy_source": instance.gen_energy_source[g],
-        "timestamp": instance.tp_timestamp[t], 
-        "tp_weight_in_year_hrs": instance.tp_weight_in_year[t],
-        "period": instance.tp_period[t],
-        "DispatchGen_MW": value(instance.DispatchGen[g, t]),
-        "Energy_GWh_typical_yr": value(
-            instance.DispatchGen[g, t] * instance.tp_weight_in_year[t] / 1000),
-        "VariableCost_per_yr": value(
-            instance.DispatchGen[g, t] * instance.gen_variable_om[g] * 
-            instance.tp_weight_in_year[t]),
-        "DispatchEmissions_tCO2_per_typical_yr": value(sum(
-            instance.DispatchEmissions[g, t, f] * instance.tp_weight_in_year[t]
-              for f in instance.FUELS_FOR_GEN[g]
-        )) if instance.gen_uses_fuel[g] else 0
-    } for g, t in instance.GEN_TPS ]
+        "gen_dbid": i.gen_dbid[g],
+        "gen_tech": i.gen_tech[g],
+        "gen_load_zone": i.gen_load_zone[g],
+        "gen_energy_source": e,
+        "timestamp": i.tp_timestamp[t], 
+        "tp_weight_in_year_hrs": i.tp_weight_in_year[t],
+        "period": i.tp_period[t],
+        "DispatchGen_MW": dispatch_ge[g,t,e],
+        "Energy_GWh_typical_yr": dispatch_ge[g,t,e] * i.tp_weight_in_year[t] / 1000,
+        "VariableCost_per_yr": (
+            dispatch_ge[g,t,e] * i.gen_variable_om[g] * i.tp_weight_in_year[t]),
+        "DispatchEmissions_tCO2_per_typical_yr": value(
+            i.DispatchEmissions[g,t,e] * i.tp_weight_in_year[t]
+        ) if i.gen_uses_fuel[g] else 0
+    } for g, t, e in gen_energy_timepoints ]
     dispatch_full_df = pd.DataFrame(dispatch_normalized_dat)
-    dispatch_full_df.set_index(["generation_project", "timestamp"], inplace=True)
+    dispatch_full_df.set_index(["generation_project", "timestamp", "gen_energy_source"], inplace=True)
     dispatch_full_df.to_csv(os.path.join(outdir, "dispatch.csv"))
         
 

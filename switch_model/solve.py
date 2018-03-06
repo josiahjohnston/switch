@@ -154,6 +154,7 @@ def main(args=None, return_model=False, return_instance=False):
             "Entering interactive Python shell.\n"
             "Abstract model is in 'model' variable; \n"
             "Solved instance is in 'instance' and 'm' variables.\n"
+            "Type `instance.post_solve()` to re-export results\n"
             "Type ctrl-d or exit() to exit shell.\n"
             "=======================================================================\n"
         )

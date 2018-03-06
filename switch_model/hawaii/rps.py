@@ -10,6 +10,9 @@ def define_arguments(argparser):
     argparser.add_argument('--rps-activate', default='activate',
         dest='rps_level', action='store_const', const='activate', 
         help="Activate RPS (on by default).")
+    argparser.add_argument('--rps-equality', 
+        dest='rps_level', action='store_const', const='activate_equality', 
+        help="Activate RPS, but do not allow renewables to exceed rps level.")
     argparser.add_argument('--rps-deactivate', 
         dest='rps_level', action='store_const', const='deactivate', 
         help="Dectivate RPS.")
@@ -105,6 +108,11 @@ def define_components(m):
         # have to postpone checking until then)
         m.RPS_Enforce = Constraint(m.PERIODS, rule=lambda m, per:
             m.RPSEligiblePower[per] >= m.rps_target_for_period[per] * m.RPSTotalPower[per]
+        )
+    elif m.options.rps_level == 'activate_equality':
+        # Use an equality for the RPS constraint instead of a greater than or equal to
+        m.RPS_Enforce = Constraint(m.PERIODS, rule=lambda m, per:
+            m.RPSEligiblePower[per] == m.rps_target_for_period[per] * m.RPSTotalPower[per]
         )
     elif m.options.rps_level == 'no_renewables':
         # prevent construction of any new exclusively-renewable projects
