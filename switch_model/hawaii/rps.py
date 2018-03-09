@@ -20,7 +20,7 @@ def define_arguments(argparser):
         dest='rps_level', action='store_const', const='no_renewables', 
         help="Deactivate RPS and don't allow any new renewables.")
     argparser.add_argument(
-        '--rps-allocation', default=None, 
+        '--rps-allocation', dest='rps_allocation', default=None, 
         choices=[
             'quadratic', 
             'fuel_switch_by_period', 'fuel_switch_by_timeseries', 
@@ -66,9 +66,9 @@ def define_components(m):
     # calculate amount of power produced from renewable fuels during each period
     m.RPSFuelPower = Expression(m.PERIODS, rule=lambda m, per:
         sum(
-            m.DispatchGenRenewableMW[p, tp] * m.tp_weight[tp]
-                for p in m.FUEL_BASED_GENS 
-                    if (p, m.TPS_IN_PERIOD[per].first()) in m.GEN_TPS
+            m.DispatchGenRenewableMW[g, tp] * m.tp_weight[tp]
+                for g in m.FUEL_BASED_GENS 
+                    if (g, m.TPS_IN_PERIOD[per].first()) in m.GEN_TPS
                         for tp in m.TPS_IN_PERIOD[per]
         )
     )
@@ -388,12 +388,12 @@ def binary_by_period_DispatchGenRenewableMW(m):
     # force flag on or off when the RPS is simple (to speed computation)
     m.Force_DispatchRenewableFlag = Constraint(
         m.GEN_WITH_FUEL_ACTIVE_PERIODS, 
-        rule=lambda m, g, pe:
-            (m.DispatchRenewableFlag[g, pe] == 0) 
-            if (m.rps_target_for_period[pe]==0.0 or m.options.rps_level != 'activate')
+        rule=lambda m, g, p:
+            (m.DispatchRenewableFlag[g, p] == 0) 
+            if (m.rps_target_for_period[p]==0.0 or m.options.rps_level != 'activate')
             else (
-                (m.DispatchRenewableFlag[g, pe] == 1) 
-                if m.rps_target_for_period[pe]==1.0
+                (m.DispatchRenewableFlag[g, p] == 1) 
+                if m.rps_target_for_period[p]==1.0
                 else Constraint.Skip
             )
     )
